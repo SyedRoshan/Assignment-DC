@@ -1,4 +1,6 @@
-
+/**
+ * Message information shared across multiple process
+ */
 public class Message {
   private String rawMessage;
   private String from;

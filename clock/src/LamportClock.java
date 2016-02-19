@@ -3,7 +3,10 @@ import java.net.InetAddress;
 import java.net.MulticastSocket;
 import java.util.Random;
 
-public class ApplicationDriver {
+/**
+ * Drives the whole application
+ */
+public class LamportClock {
   private static final int DEFAULT_PROCESS_COUNT = 3;
   private static final int DEFAULT_EVENT_COUNT = 5;
   private static final int port = 3456;
@@ -15,7 +18,7 @@ public class ApplicationDriver {
   public static void main(String[] args){
     //setProcessNEventCount(args);
     
-    ApplicationDriver messageSender = new ApplicationDriver();
+    LamportClock messageSender = new LamportClock();
     messageSender.initializeMulticastGroup();
     messageSender.initializeReceivers(DEFAULT_PROCESS_COUNT);
     messageSender.sendRandomMessages(DEFAULT_PROCESS_COUNT, DEFAULT_EVENT_COUNT);
@@ -63,7 +66,7 @@ public class ApplicationDriver {
   private void initializeMulticastGroup() {
     try {
       group = InetAddress.getByName("239.1.2.3");
-      socket = new MulticastSocket(ApplicationDriver.port);
+      socket = new MulticastSocket(LamportClock.port);
       socket.setTimeToLive(1);
     } catch (Exception ex) {
       ex.printStackTrace();
@@ -102,9 +105,9 @@ public class ApplicationDriver {
         int iClockSender = receivers[randSender-1].getLocalClock();
         
         String msg = randSender + "-" + randReceiver + "-" + iClockSender + "-" + ((i%2==0)?"Send" :"Receive");
-        System.out.println("Sending message (sender-receiver-senderClock-eventType): " + msg);
+        //System.out.println("Sending message (sender-receiver-senderClock-eventType): " + msg);
         DatagramPacket packet = new DatagramPacket(msg.getBytes(),
-            msg.length(), group, ApplicationDriver.port);
+            msg.length(), group, LamportClock.port);
         socket.send(packet);
         Thread.sleep(3000);
       } catch (Exception ex) {
@@ -125,7 +128,7 @@ public class ApplicationDriver {
     receivers = new LamportProcess[numProcesses];
     Thread[] receiverThreads = new Thread[numProcesses];
     for (int iterator=0; iterator<numProcesses; iterator++) {
-      receivers[iterator] = new LamportProcess((iterator+1), ApplicationDriver.port);
+      receivers[iterator] = new LamportProcess((iterator+1), LamportClock.port);
       receiverThreads[iterator] = new Thread(receivers[iterator]);
       receiverThreads[iterator].start();
     }
@@ -138,7 +141,7 @@ public class ApplicationDriver {
     try {
       String msg = "0-0-0-STOP";
       DatagramPacket packet = new DatagramPacket(msg.getBytes(),
-          msg.length(), group, ApplicationDriver.port);
+          msg.length(), group, LamportClock.port);
       socket.send(packet);
       Thread.sleep(3000);
     } catch (Exception ex) {

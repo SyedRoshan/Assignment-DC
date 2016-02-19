@@ -4,6 +4,9 @@ import java.net.InetAddress;
 import java.net.MulticastSocket;
 import java.util.Random;
 
+/**
+ *Worker thread representing individual process 
+ */
 public class LamportProcess implements Runnable {
   private int port;
   private int processId;
@@ -12,16 +15,20 @@ public class LamportProcess implements Runnable {
   InetAddress group;
   int localClock = 0;
   
-  
+  /**
+   * Constructor to initialize the process
+   */
   public LamportProcess(int receiverId, int port){
     this.processId = receiverId;
     this.port = port;
     initializeChannel(port);
   }
   
+  /**
+   * Initialize the socket connection
+   */
   public void initializeChannel(int port){
     try{
-      
       processName = "P"+processId;
       group = InetAddress.getByName("239.1.2.3");
       socket = new MulticastSocket(port);
@@ -32,6 +39,9 @@ public class LamportProcess implements Runnable {
     }
   }
 
+  /**
+   * Process
+   */
   @Override
   public void run() {
     try{
@@ -41,7 +51,7 @@ public class LamportProcess implements Runnable {
       Message messageData = null;
       String incomingMessage;
       String localEventType="Local";
-      int remoteClock = 0, eventCount = 0;
+      int remoteClock = 0;
       
       incomingMessage = listenChannel();//Listen channel for incoming message
       
@@ -51,23 +61,21 @@ public class LamportProcess implements Runnable {
         e.printStackTrace();
       }
       
-      if(isStopSignal(messageData))
+      if(isStopSignal(messageData))//Stops the process if stop signal is published
         break;
       
-      //validate identity
+      //validate identity and process event type action
       if(messageData.getEventType().equalsIgnoreCase("RECEIVE") && messageData.getTo().equalsIgnoreCase(Integer.toString(processId))){
         remoteClock = messageData.getSenderClockTime();
         
         if(findMaximumValue(localClock, remoteClock) == remoteClock)
         {
           localEventType="Receive";
-          eventCount ++;
           //System.out.println("Receive => "+processName+" : "+localClock+" : "+ remoteClock+" : "+localEventType);
           localClock = remoteClock + 1; //Increment remote clock by 1
         }  
       }else if(messageData.getEventType().equalsIgnoreCase("SEND") && messageData.getFrom().equalsIgnoreCase(Integer.toString(processId))){
         localEventType = "Send";
-        //messageData.setEventType("Receive");//Change event type so that infinite looping can be avoided
         //System.out.println("Send => "+processName+" : "+localClock+" : "+localEventType+" : "+messageData.getTo());
         postMessage(framePostMessage("Receive"));
       }
@@ -83,15 +91,18 @@ public class LamportProcess implements Runnable {
       }
     } 
     }catch(Exception ex){
+     ex.printStackTrace();
       
     }finally {
-      
-      //close socket connection
+      //close active socket connection
       if(socket != null && !socket.isClosed())
         socket.close();
     }
   }
   
+  /**
+   * Post the message to another process through available socket connection
+   */
   public boolean postMessage(String msg) throws IOException{
     DatagramPacket packet = new DatagramPacket(msg.getBytes(),
         msg.length(), group, port);
@@ -100,6 +111,9 @@ public class LamportProcess implements Runnable {
     return true;
   }
   
+  /**
+   * Create message to posted to sub process
+   */
   private String framePostMessage(String event){
     String msg = processId+"-"+getRandom(processId)+"-"+getLocalClock()+"-"+event;
     
@@ -116,14 +130,29 @@ public class LamportProcess implements Runnable {
     return rand.nextInt(numProcesses) + 1;
   }
   
+  /**
+   * Returns local clock time of the process
+   * @return
+   */
   public int getLocalClock() {
     return localClock;
   }
   
+  /**
+   * Returns the maximum value
+   * @param value1
+   * @param value2
+   * @return
+   */
   private int findMaximumValue(int value1, int value2){
     return Math.max(value1, value2);
   }
   
+  /**
+   * Validate if the message contains stop signal
+   * @param message
+   * @return
+   */
   private boolean isStopSignal(Message message){
     if(message != null && message.getEventType().equalsIgnoreCase("STOP")) {
       System.out.println("------ END of " + processName + " (clock time: "+ localClock + ") ------" );
@@ -142,6 +171,10 @@ public class LamportProcess implements Runnable {
     return localClock;
   }
   
+  /**
+   * Listen the socket channel and fetch any available message.
+   * @return
+   */
   private String listenChannel(){
     String rawMessage = "";
     try{
